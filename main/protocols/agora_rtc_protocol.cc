@@ -79,7 +79,6 @@ bool AgoraRtcProtocol::OpenAudioChannel() {
     channel_opt.auto_subscribe_video = false;
     channel_opt.enable_audio_jitter_buffer = true;
     channel_opt.enable_audio_mixer = false;
-    // Use built-in codec to send PCM as OPUS
     channel_opt.audio_codec_opt.audio_codec_type = AUDIO_CODEC_DISABLED;
     channel_opt.audio_codec_opt.pcm_sample_rate = 16000;
     channel_opt.audio_codec_opt.pcm_channel_num = 1;
