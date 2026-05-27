@@ -28,6 +28,7 @@ public:
 private:
     EventGroupHandle_t event_group_handle_;
     connection_id_t conn_id_ = CONNECTION_ID_INVALID;
+    int stream_id_ = -1;
     std::atomic<bool> joined_{false};
     std::atomic<bool> channel_opened_{false};
 

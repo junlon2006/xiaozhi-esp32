@@ -108,6 +108,13 @@ bool AgoraRtcProtocol::OpenAudioChannel() {
         return false;
     }
 
+    // Create data stream once after joining
+    ret = agora_rtc_create_data_stream(conn_id_, &stream_id_, true, true);
+    if (ret < 0) {
+        ESP_LOGW(TAG, "Create data stream failed: %s", agora_rtc_err_2_str(ret));
+        stream_id_ = -1;
+    }
+
     channel_opened_ = true;
     last_incoming_time_ = std::chrono::steady_clock::now();
 
@@ -125,6 +132,7 @@ void AgoraRtcProtocol::CloseAudioChannel(bool send_goodbye) {
     }
     channel_opened_ = false;
     joined_ = false;
+    stream_id_ = -1;
 
     if (conn_id_ != CONNECTION_ID_INVALID) {
         agora_rtc_leave_channel(conn_id_);
@@ -165,15 +173,12 @@ bool AgoraRtcProtocol::SendText(const std::string& text) {
         return false;
     }
 
-    // Use data stream to send JSON text messages
-    int stream_id = 0;
-    int ret = agora_rtc_create_data_stream(conn_id_, &stream_id, true, true);
-    if (ret < 0) {
-        ESP_LOGE(TAG, "Create data stream failed: %s", agora_rtc_err_2_str(ret));
+    if (stream_id_ < 0) {
+        ESP_LOGE(TAG, "Data stream not created");
         return false;
     }
 
-    ret = agora_rtc_send_stream_message(conn_id_, stream_id, text.c_str(), text.size());
+    int ret = agora_rtc_send_stream_message(conn_id_, stream_id_, text.c_str(), text.size());
     if (ret < 0) {
         ESP_LOGE(TAG, "Send stream message failed: %s", agora_rtc_err_2_str(ret));
         return false;
