@@ -11,6 +11,34 @@
                 "CONFIG_IDF_EXPERIMENTAL_FEATURES=y",
                 "CONFIG_FREERTOS_HZ=1000"
             ]
+        },
+        {
+            "name": "sensecap-watcher-agora-sh2",
+            "sdkconfig_append": [
+                "CONFIG_ESPTOOLPY_FLASHSIZE_32MB=y",
+                "CONFIG_PARTITION_TABLE_CUSTOM_FILENAME=\"partitions/v2/32m.csv\"",
+                "CONFIG_BOOTLOADER_CACHE_32BIT_ADDR_QUAD_FLASH=y",
+                "CONFIG_ESPTOOLPY_FLASH_MODE_AUTO_DETECT=n",
+                "CONFIG_IDF_EXPERIMENTAL_FEATURES=y",
+                "CONFIG_FREERTOS_HZ=1000",
+                "CONFIG_CONNECTION_TYPE_AGORA_RTC=y",
+                "CONFIG_LANGUAGE_ZH_CN=y",
+                "CONFIG_DEVICE_API_SERVER_URL=\"https://mybot.sh2.agoralab.co/api\""
+            ]
+        },
+        {
+            "name": "sensecap-watcher-agora-sg3",
+            "sdkconfig_append": [
+                "CONFIG_ESPTOOLPY_FLASHSIZE_32MB=y",
+                "CONFIG_PARTITION_TABLE_CUSTOM_FILENAME=\"partitions/v2/32m.csv\"",
+                "CONFIG_BOOTLOADER_CACHE_32BIT_ADDR_QUAD_FLASH=y",
+                "CONFIG_ESPTOOLPY_FLASH_MODE_AUTO_DETECT=n",
+                "CONFIG_IDF_EXPERIMENTAL_FEATURES=y",
+                "CONFIG_FREERTOS_HZ=1000",
+                "CONFIG_CONNECTION_TYPE_AGORA_RTC=y",
+                "CONFIG_LANGUAGE_EN_US=y",
+                "CONFIG_DEVICE_API_SERVER_URL=\"https://mybot.sg3.agoralab.co/api\""
+            ]
         }
     ]
 }

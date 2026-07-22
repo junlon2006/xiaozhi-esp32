@@ -7,8 +7,25 @@
                 "CONFIG_SPIRAM_MODE_QUAD=y",
                 "CONFIG_CAMERA_GC0308=y",
                 "CONFIG_CAMERA_GC0308_AUTO_DETECT_DVP_INTERFACE_SENSOR=y",
-                "CONFIG_CAMERA_GC0308_DVP_YUV422_320X240_20FPS=y",
-                "CONFIG_CONNECTION_TYPE_AGORA_RTC=y"
+                "CONFIG_CAMERA_GC0308_DVP_YUV422_320X240_20FPS=y"
+            ]
+        },
+        {
+            "name": "m5stack-core-s3-agora-sh2",
+            "sdkconfig_append": [
+                "CONFIG_SPIRAM_MODE_QUAD=y",
+                "CONFIG_CONNECTION_TYPE_AGORA_RTC=y",
+                "CONFIG_LANGUAGE_ZH_CN=y",
+                "CONFIG_DEVICE_API_SERVER_URL=\"https://mybot.sh2.agoralab.co/api\""
+            ]
+        },
+        {
+            "name": "m5stack-core-s3-agora-sg3",
+            "sdkconfig_append": [
+                "CONFIG_SPIRAM_MODE_QUAD=y",
+                "CONFIG_CONNECTION_TYPE_AGORA_RTC=y",
+                "CONFIG_LANGUAGE_EN_US=y",
+                "CONFIG_DEVICE_API_SERVER_URL=\"https://mybot.sg3.agoralab.co/api\""
             ]
         }
     ]

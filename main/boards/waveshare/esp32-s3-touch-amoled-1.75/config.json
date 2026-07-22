@@ -17,6 +17,46 @@
                 "CONFIG_BOARD_TYPE_WAVESHARE_ESP32_S3_TOUCH_AMOLED_1_75C=y",
                 "CONFIG_USE_DEVICE_AEC=y"
             ]
+        },
+        {
+            "name": "esp32-s3-touch-amoled-1.75-agora-sh2",
+            "sdkconfig_append": [
+                "CONFIG_USE_WECHAT_MESSAGE_STYLE=n",
+                "CONFIG_BOARD_TYPE_WAVESHARE_ESP32_S3_TOUCH_AMOLED_1_75=y",
+                "CONFIG_CONNECTION_TYPE_AGORA_RTC=y",
+                "CONFIG_LANGUAGE_ZH_CN=y",
+                "CONFIG_DEVICE_API_SERVER_URL=\"https://mybot.sh2.agoralab.co/api\""
+            ]
+        },
+        {
+            "name": "esp32-s3-touch-amoled-1.75-agora-sg3",
+            "sdkconfig_append": [
+                "CONFIG_USE_WECHAT_MESSAGE_STYLE=n",
+                "CONFIG_BOARD_TYPE_WAVESHARE_ESP32_S3_TOUCH_AMOLED_1_75=y",
+                "CONFIG_CONNECTION_TYPE_AGORA_RTC=y",
+                "CONFIG_LANGUAGE_EN_US=y",
+                "CONFIG_DEVICE_API_SERVER_URL=\"https://mybot.sg3.agoralab.co/api\""
+            ]
+        },
+        {
+            "name": "esp32-s3-touch-amoled-1.75c-agora-sh2",
+            "sdkconfig_append": [
+                "CONFIG_USE_WECHAT_MESSAGE_STYLE=n",
+                "CONFIG_BOARD_TYPE_WAVESHARE_ESP32_S3_TOUCH_AMOLED_1_75C=y",
+                "CONFIG_CONNECTION_TYPE_AGORA_RTC=y",
+                "CONFIG_LANGUAGE_ZH_CN=y",
+                "CONFIG_DEVICE_API_SERVER_URL=\"https://mybot.sh2.agoralab.co/api\""
+            ]
+        },
+        {
+            "name": "esp32-s3-touch-amoled-1.75c-agora-sg3",
+            "sdkconfig_append": [
+                "CONFIG_USE_WECHAT_MESSAGE_STYLE=n",
+                "CONFIG_BOARD_TYPE_WAVESHARE_ESP32_S3_TOUCH_AMOLED_1_75C=y",
+                "CONFIG_CONNECTION_TYPE_AGORA_RTC=y",
+                "CONFIG_LANGUAGE_EN_US=y",
+                "CONFIG_DEVICE_API_SERVER_URL=\"https://mybot.sg3.agoralab.co/api\""
+            ]
         }
     ]
 }

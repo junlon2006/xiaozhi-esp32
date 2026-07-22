@@ -8,6 +8,28 @@
                  "CONFIG_MMAP_FILE_NAME_LENGTH=32",
                  "CONFIG_FLASH_EXPRESSION_ASSETS=y"
              ]
+        },
+        {
+            "name": "esp-vocat-agora-sh2",
+            "sdkconfig_append": [
+                "CONFIG_USE_EMOTE_MESSAGE_STYLE=y",
+                "CONFIG_MMAP_FILE_NAME_LENGTH=32",
+                "CONFIG_FLASH_EXPRESSION_ASSETS=y",
+                "CONFIG_CONNECTION_TYPE_AGORA_RTC=y",
+                "CONFIG_LANGUAGE_ZH_CN=y",
+                "CONFIG_DEVICE_API_SERVER_URL=\"https://mybot.sh2.agoralab.co/api\""
+            ]
+        },
+        {
+            "name": "esp-vocat-agora-sg3",
+            "sdkconfig_append": [
+                "CONFIG_USE_EMOTE_MESSAGE_STYLE=y",
+                "CONFIG_MMAP_FILE_NAME_LENGTH=32",
+                "CONFIG_FLASH_EXPRESSION_ASSETS=y",
+                "CONFIG_CONNECTION_TYPE_AGORA_RTC=y",
+                "CONFIG_LANGUAGE_EN_US=y",
+                "CONFIG_DEVICE_API_SERVER_URL=\"https://mybot.sg3.agoralab.co/api\""
+            ]
         }
     ]
 }
