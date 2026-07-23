@@ -487,7 +487,7 @@ Serial flasher config → Flash size → 32 MB
 
 **BOARD_TYPE_M5STACK_STICK_S3**
 
-> **⚠️ 8MB Flash 空间限制**：Agora RTC 固件较大（~3.1MB），需使用专用的 `partitions/v2/8m_agora.csv` 分区表。该分区表将 OTA 分区从 3MB 增大至 3.375MB，对应缩减 assets 分区至 1.125MB。使用 `build_agora_rtc.py` 脚本时自动选择正确分区表。
+> **⚠️ 8MB Flash 空间限制**：Agora RTC 固件较大（~3.1MB），需使用专用的 `partitions/v2/8m_agora.csv` 分区表。该分区表将 OTA 分区从 3MB 增大至 3.25MB，对应缩减 assets 分区至 1.375MB。使用 `build_agora_rtc.py` 脚本时自动选择正确分区表。
 
 除总规则及使用 `8m_agora.csv` 分区表外，其余保持默认。
 

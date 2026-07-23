@@ -1,10 +1,10 @@
 # ESP-IDF Partition Table
 # Optimized for 8MB flash with Agora RTC (larger firmware ~3.2MB)
-# Larger OTA partitions by reducing assets to 1.125MB.
+# OTA 3.25MB each, assets 1.375MB — fits xiaozhi.bin 0x3147b0 + generated_assets.bin 0x134441.
 # Name,   Type, SubType, Offset,  Size, Flags
 nvs,      data, nvs,     0x9000,    0x4000,
 otadata,  data, ota,     0xd000,    0x2000,
 phy_init, data, phy,     0xf000,    0x1000,
-ota_0,    app,  ota_0,   0x20000,   0x360000,
-ota_1,    app,  ota_1,   ,          0x360000,
-assets,   data, spiffs,  0x6E0000,  0x120000,
+ota_0,    app,  ota_0,   0x20000,   0x340000,
+ota_1,    app,  ota_1,   ,          0x340000,
+assets,   data, spiffs,  0x6A0000,  0x160000,
