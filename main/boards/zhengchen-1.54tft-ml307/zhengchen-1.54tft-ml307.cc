@@ -12,6 +12,9 @@
 
 #include <esp_log.h>
 #include <esp_lcd_panel_vendor.h>
+#include <nvs_flash.h>
+#include <esp_partition.h>
+#include <esp_wifi.h>
 
 #include <driver/rtc_io.h>
 #include <esp_sleep.h>
@@ -87,7 +90,54 @@ private:
         });
 
         boot_button_.OnLongPress([this]() {
-            SwitchNetworkType();
+            power_save_timer_->WakeUp();
+            auto display = GetDisplay();
+
+            ESP_LOGI(TAG, "Long press detected: factory reset");
+            display->ShowNotification(Lang::Strings::FACTORY_RESET);
+
+            // Close audio channel and stop protocol if running
+            auto& app = Application::GetInstance();
+            if (app.GetDeviceState() != kDeviceStateIdle) {
+                app.Reboot();
+                return;
+            }
+
+            // Step 1: Erase all NVS data (WiFi config, Agora token, network type, audio settings, etc.)
+            ESP_LOGI(TAG, "Erasing NVS flash...");
+            esp_err_t ret = nvs_flash_erase();
+            if (ret != ESP_OK) {
+                ESP_LOGE(TAG, "Failed to erase NVS: %s", esp_err_to_name(ret));
+            }
+            ret = nvs_flash_init();
+            if (ret != ESP_OK) {
+                ESP_LOGE(TAG, "Failed to init NVS: %s", esp_err_to_name(ret));
+            }
+
+            // Step 2: Erase WiFi storage (internal SSID/PSK)
+            ESP_LOGI(TAG, "Erasing WiFi storage...");
+            ret = esp_wifi_restore();
+            if (ret != ESP_OK) {
+                ESP_LOGE(TAG, "Failed to erase WiFi storage: %s", esp_err_to_name(ret));
+            }
+
+            // Step 3: Erase otadata partition (force boot from ota_0 on next start)
+            ESP_LOGI(TAG, "Erasing otadata partition...");
+            const esp_partition_t* otadata = esp_partition_find_first(
+                ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_DATA_OTA, NULL);
+            if (otadata != NULL) {
+                ret = esp_partition_erase_range(otadata, 0, otadata->size);
+                if (ret != ESP_OK) {
+                    ESP_LOGE(TAG, "Failed to erase otadata: %s", esp_err_to_name(ret));
+                }
+            } else {
+                ESP_LOGE(TAG, "Failed to find otadata partition");
+            }
+
+            // Step 4: Reboot
+            display->ShowNotification("重启中...");
+            vTaskDelay(pdMS_TO_TICKS(2000));
+            esp_restart();
         });
 
         volume_up_button_.OnClick([this]() {
@@ -156,7 +206,7 @@ private:
 
 public:
     ZHENGCHEN_1_54TFT_ML307() :
-        DualNetworkBoard(ML307_TX_PIN, ML307_RX_PIN),
+        DualNetworkBoard(ML307_TX_PIN, ML307_RX_PIN, GPIO_NUM_NC, 0),
         boot_button_(BOOT_BUTTON_GPIO),
         volume_up_button_(VOLUME_UP_BUTTON_GPIO),
         volume_down_button_(VOLUME_DOWN_BUTTON_GPIO) {
