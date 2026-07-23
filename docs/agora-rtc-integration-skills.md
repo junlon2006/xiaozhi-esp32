@@ -442,14 +442,54 @@ region     = Device API URL 中的区域标识（sh2 或 sg3）
   → zhengchen_1_54tft_ml307_sg3.bin
 ```
 
-### 9.2 生成完整固件包
+### 9.2 开发者编译方式（idf.py build）
 
-编译完成后，在 `build/` 目录下执行：
+适用于开发调试阶段，手动编译单个 Board 固件。按照 9.1 总规则的步骤完成基础编译后，参考以下补充内容。
+
+#### 9.2.1 Board 专属配置
+
+在 `idf.py menuconfig` 阶段，根据目标 Board 额外设置以下选项。
+
+**BOARD_TYPE_ZHENGCHEN_1_54TFT_ML307**
+
+除总规则外，其余均保持默认。
+
+**BOARD_TYPE_M5STACK_CORE_S3**
+
+> **⚠️ QUAD/OCT mode 残留问题**：M5Stack Core S3 使用 **Quad Mode PSRAM**。如果在此 Board 之后编译其他 Board，必须清理 sdkconfig（`rm -f sdkconfig`），否则残留的 `CONFIG_SPIRAM_MODE_QUAD=y` 会导致其他使用 OCT mode 或不同 SPI RAM 配置的 Board 编译失败。
+
+除总规则外，还需配置：
+```
+Component config → ESP PSRAM → Support for external, SPI-connected RAM
+  → SPI RAM config → Mode (QUAD/OCT) of SPI RAM chip in use
+    → Quad Mode PSRAM
+```
+
+**BOARD_TYPE_SEEED_STUDIO_SENSECAP_WATCHER**
+
+除总规则外，还需配置：
+```
+Partition Table → Custom partition table file → partitions/v2/32m.csv
+Serial flasher config → Flash size → 32 MB
+```
+
+**BOARD_TYPE_WAVESHARE_ESP32_S3_TOUCH_AMOLED_1_75C**
+
+除总规则外，其余保持默认。
+
+**BOARD_TYPE_ZHENGCHEN_1_54TFT_WIFI**
+
+除总规则外，其余保持默认。
+
+**BOARD_TYPE_ESP_VOCAT**
+
+除总规则外，其余保持默认。
+
+#### 9.2.2 合并完整固件包
+
+编译完成后（`idf.py build` 成功），在 `build/` 目录下执行 `esptool merge_bin` 将多个分区 bin 合并为单个烧录文件：
 
 ```bash
-# 从 build 输出获取正确的 flash args
-idf.py build
-
 # 打包为单个完整固件（以 zhengchen sh2 为例）
 cd build
 python -m esptool --chip esp32s3 merge_bin \
@@ -464,44 +504,7 @@ python -m esptool --chip esp32s3 merge_bin \
 
 > `--flash_size`、偏移地址以 `idf.py build` 输出的烧录命令为准，不同分区表可能不同。
 
-### 9.3 已支持的 Board 编译配置
-
-#### 9.3.1 BOARD_TYPE_ZHENGCHEN_1_54TFT_ML307
-
-除总规则外，其余均保持默认。
-
-#### 9.3.2 BOARD_TYPE_M5STACK_CORE_S3
-
-> **⚠️ QUAD/OCT mode 残留问题**：M5Stack Core S3 使用 **Quad Mode PSRAM**。如果在此 Board 之后编译其他 Board，必须清理 sdkconfig（`rm -f sdkconfig`），否则残留的 `CONFIG_SPIRAM_MODE_QUAD=y` 会导致其他使用 OCT mode 或不同 SPI RAM 配置的 Board 编译失败。
-
-除总规则外，还需配置：
-```
-Component config → ESP PSRAM → Support for external, SPI-connected RAM
-  → SPI RAM config → Mode (QUAD/OCT) of SPI RAM chip in use
-    → Quad Mode PSRAM
-```
-
-#### 9.3.3 BOARD_TYPE_SEEED_STUDIO_SENSECAP_WATCHER
-
-除总规则外，还需配置：
-```
-Partition Table → Custom partition table file → partitions/v2/32m.csv
-Serial flasher config → Flash size → 32 MB
-```
-
-#### 9.3.4 BOARD_TYPE_WAVESHARE_ESP32_S3_TOUCH_AMOLED_1_75C
-
-除总规则外，其余保持默认。
-
-#### 9.3.5 BOARD_TYPE_ZHENGCHEN_1_54TFT_WIFI
-
-除总规则外，其余保持默认。
-
-#### 9.3.6 BOARD_TYPE_ESP_VOCAT
-
-除总规则外，其余保持默认。
-
-### 9.4 完整编译及打包示例（中国大陆版 zhengchen）
+#### 9.2.3 完整编译及打包示例（中国大陆版 zhengchen）
 
 ```bash
 # 第一步：清理旧配置（重点！防止不同 Board 配置残留）
@@ -527,3 +530,70 @@ python -m esptool --chip esp32s3 merge_bin \
   0x20000 xiaozhi.bin \
   0x800000 generated_assets.bin
 ```
+
+### 9.3 脚本一键打包（scripts/build_agora_rtc.py）
+
+适用于正式出包场景，自动批量编译所有 Board 的中国大陆版本（sh2）和海外版本（sg3），输出命名规范的 `.bin` 文件到 `releases/` 目录。
+
+#### 9.3.1 脚本说明
+
+`scripts/build_agora_rtc.py` 封装了以下流程：
+
+1. 自动执行 `scripts/release.py` 编译每个 Board Variant
+2. 从编译产物 zip 中提取 `merged-binary.bin`
+3. 按命名规范重命名为 `{board_name}_{region}.bin`
+4. 输出到工程根目录下的 `releases/` 文件夹
+
+脚本内置了所有已支持 Board 的编译矩阵，自动编译中国大陆（sh2）和海外（sg3）两个版本。
+
+#### 9.3.2 使用方式
+
+**前置条件**：先 source ESP-IDF 环境
+
+```bash
+source /path/to/esp-idf/export.sh
+```
+
+**编译所有 Board 的全部版本**（中国大陆 + 海外）：
+```bash
+python3 scripts/build_agora_rtc.py
+```
+
+**仅编译指定区域**：
+```bash
+python3 scripts/build_agora_rtc.py --region sh2     # 仅中国大陆版本
+python3 scripts/build_agora_rtc.py --region sg3     # 仅海外版本
+```
+
+**仅编译指定 Board**：
+```bash
+python3 scripts/build_agora_rtc.py --board zhengchen-1.54tft-ml307
+python3 scripts/build_agora_rtc.py --board m5stack-core-s3
+python3 scripts/build_agora_rtc.py --board sensecap-watcher
+```
+
+**组合过滤**：
+```bash
+python3 scripts/build_agora_rtc.py --board zhengchen-1.54tft-ml307 --region sh2
+```
+
+#### 9.3.3 编译输出
+
+编译产物位于项目根目录 `releases/` 下：
+
+```
+releases/
+  zhengchen_1_54tft_ml307_sh2.bin
+  zhengchen_1_54tft_ml307_sg3.bin
+  m5stack_core_s3_sh2.bin
+  m5stack_core_s3_sg3.bin
+  seeed_studio_sensecap_watcher_sh2.bin
+  seeed_studio_sensecap_watcher_sg3.bin
+  waveshare_esp32_s3_touch_amoled_1_75c_sh2.bin
+  waveshare_esp32_s3_touch_amoled_1_75c_sg3.bin
+  ...
+```
+
+每次运行脚本会清空 `releases/` 目录，确保输出目录只包含本次编译的产物。已存在的同名 `.bin` 文件会被跳过（不重复编译）。
+
+> 脚本内置版本号 `VERSION`，编译产物使用 `release.py` 的 zip 命名约定。如需更新版本号，直接修改脚本顶部的 `VERSION` 变量。
