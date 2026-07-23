@@ -485,6 +485,12 @@ Serial flasher config → Flash size → 32 MB
 
 除总规则外，其余保持默认。
 
+**BOARD_TYPE_M5STACK_STICK_S3**
+
+> **⚠️ 8MB Flash 空间限制**：Agora RTC 固件较大（~3.1MB），需使用专用的 `partitions/v2/8m_agora.csv` 分区表。该分区表将 OTA 分区从 3MB 增大至 3.375MB，对应缩减 assets 分区至 1.125MB。使用 `build_agora_rtc.py` 脚本时自动选择正确分区表。
+
+除总规则及使用 `8m_agora.csv` 分区表外，其余保持默认。
+
 #### 9.2.2 合并完整固件包
 
 编译完成后（`idf.py build` 成功），在 `build/` 目录下执行 `esptool merge_bin` 将多个分区 bin 合并为单个烧录文件：
@@ -587,6 +593,8 @@ releases/
   zhengchen_1_54tft_ml307_sg3.bin
   m5stack_core_s3_sh2.bin
   m5stack_core_s3_sg3.bin
+  m5stack_stick_s3_sh2.bin
+  m5stack_stick_s3_sg3.bin
   seeed_studio_sensecap_watcher_sh2.bin
   seeed_studio_sensecap_watcher_sg3.bin
   waveshare_esp32_s3_touch_amoled_1_75c_sh2.bin
