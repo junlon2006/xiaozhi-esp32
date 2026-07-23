@@ -56,6 +56,10 @@ VARIANTS = [
     # esp-vocat
     ("esp-vocat", "esp-vocat-agora-sh2", "esp_vocat", "sh2"),
     ("esp-vocat", "esp-vocat-agora-sg3", "esp_vocat", "sg3"),
+
+    # m5stack-stick-s3 (8MB flash, uses 8m_agora partition table)
+    ("m5stack-stick-s3", "m5stack-stick-s3-agora-sh2", "m5stack_stick_s3", "sh2"),
+    ("m5stack-stick-s3", "m5stack-stick-s3-agora-sg3", "m5stack_stick_s3", "sg3"),
 ]
 
 
