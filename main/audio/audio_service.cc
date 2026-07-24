@@ -146,14 +146,14 @@ void AudioService::Start() {
         AudioService* audio_service = (AudioService*)arg;
         audio_service->AudioInputTask();
         vTaskDelete(NULL);
-    }, "audio_input", 2048 * 2, this, 8, &audio_input_task_handle_);
+    }, "audio_input", 2048 * 3, this, 8, &audio_input_task_handle_);
 
     /* Start the audio output task */
     xTaskCreate([](void* arg) {
         AudioService* audio_service = (AudioService*)arg;
         audio_service->AudioOutputTask();
         vTaskDelete(NULL);
-    }, "audio_output", 2048, this, 4, &audio_output_task_handle_);
+    }, "audio_output", 2048 * 2, this, 4, &audio_output_task_handle_);
 #endif
 
     /* Start the opus codec task */
@@ -161,7 +161,13 @@ void AudioService::Start() {
         AudioService* audio_service = (AudioService*)arg;
         audio_service->OpusCodecTask();
         vTaskDelete(NULL);
-    }, "opus_codec", 2048 * 12, this, 2, &opus_codec_task_handle_);
+    }, "opus_codec",
+#if CONFIG_CONNECTION_TYPE_AGORA_RTC
+       2048 * 4,  // 8KB — Agora sends PCM directly, Opus only used as fallback for local sounds
+#else
+       2048 * 12, // 24KB — needed for Opus encode/decode in WebSocket/MQTT protocol
+#endif
+       this, 2, &opus_codec_task_handle_);
 }
 
 void AudioService::Stop() {
