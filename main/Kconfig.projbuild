@@ -949,28 +949,7 @@ config AGORA_JITTER_BUFFER
         Enable the RTC SDK's internal adaptive jitter buffer.
         When disabled, audio frames are delivered to the application
         directly without buffering.
-
-choice AGORA_JITTER_BUFFER_DURATION
-    prompt "Jitter buffer output frame duration (ms)"
-    depends on AGORA_JITTER_BUFFER
-    default AGORA_JITTER_DURATION_60
-    help
-        Output frame duration of the jitter buffer in milliseconds.
-        This should match the RTC channel's pcm_duration setting.
-
-config AGORA_JITTER_DURATION_20
-    bool "20ms"
-config AGORA_JITTER_DURATION_40
-    bool "40ms"
-config AGORA_JITTER_DURATION_60
-    bool "60ms"
-endchoice
-
-config AGORA_JITTER_BUFFER_DURATION_MS
-    int
-    default 20 if AGORA_JITTER_DURATION_20
-    default 40 if AGORA_JITTER_DURATION_40
-    default 60 if AGORA_JITTER_DURATION_60
+        The SDK delivers 60 ms of PCM in each jitter-buffer callback.
 
 config DEVICE_API_SERVER_URL
     string "Device API Server URL"

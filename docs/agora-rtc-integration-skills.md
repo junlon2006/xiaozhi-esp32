@@ -14,7 +14,7 @@ Device ←→ Agora RTC (音频 PCM 16kHz mono 16-bit)
 ## 前置条件
 
 - xiaozhi-esp32 项目，commit `331d69b` 或更高
-- ESP-IDF v5.4+
+- ESP-IDF v5.5.2
 - Agora RTSA SDK（`components/agora_rtc/`，预编译静态库 `libagora-rtc-sdk.a`）
 - Agora AOSL（`components/aosl/`，操作系统抽象层）
 - 声网 ConvoAI 服务端
@@ -87,7 +87,6 @@ static constexpr size_t kRefBufferMaxSamples = 16000;  // 1秒 @ 16kHz
 #define AGORA_AI_QOS                CONFIG_AGORA_AI_QOS
 #define AGORA_CLOUD_AEC             CONFIG_AGORA_CLOUD_AEC
 #define AGORA_JITTER_BUFFER         CONFIG_AGORA_JITTER_BUFFER
-#define AGORA_JITTER_BUFFER_DURATION_MS CONFIG_AGORA_JITTER_BUFFER_DURATION_MS
 ```
 
 ### 2.2 音频通道建立（`OpenAudioChannel`）
@@ -95,17 +94,20 @@ static constexpr size_t kRefBufferMaxSamples = 16000;  // 1秒 @ 16kHz
 ```
 1. POST /conversations/start → 获取 RTC 参数（app_id, channel, token, uid, agent_uid）
 2. agora_rtc_init(app_id, &handler, &option)
-3. agora_rtc_login_rtm(uid, token, &rtm_handler) → 等待 AGORA_RTM_LOGIN_EVENT
-4. agora_rtc_create_connection(&conn_id)
-5. 配置选项:
+3. agora_rtm_login(uid, token, &rtm_handler) → 等待 RTM 登录成功
+4. agora_rtm_subscribe(channel) → 订阅 RTC 同名频道并等待 on_rtm_subscribe_result 成功
+5. agora_rtc_create_connection(&conn_id)
+6. 配置选项:
    auto_subscribe_audio = true
    enable_audio_decode   = true
    enable_audio_jitter_buffer = CONFIG_AGORA_JITTER_BUFFER
    enable_audio_ai_qos        = CONFIG_AGORA_AI_QOS
    enable_audio_downlink_aec  = CONFIG_AGORA_CLOUD_AEC
    audio_codec = G722 @ 16kHz mono, 60ms pcm_duration
-6. agora_rtc_join_channel_with_user_account() → 等待 AGORA_JOINED_EVENT
+7. agora_rtc_join_channel_with_user_account() → 等待 AGORA_JOINED_EVENT
 ```
+
+RTM 登录或频道订阅失败、超时后中止本次连接，不创建或加入 RTC 频道。关闭时按 RTC leave/destroy、RTM unsubscribe、RTM logout 的顺序释放。
 
 ### 2.3 音频上行（`SendAudio`）
 
@@ -134,7 +136,29 @@ SDK 回调线程 → OnAudioData
 
 注意：`OnAudioData` 运行在 SDK 内部 `AgoraRtcCb` 线程（FreeRTOS pri 5），直接推送 PCM 到 `AudioService::PushPacketToDecodeQueue`。
 
-### 2.5 Device API 客户端（`device_api_client.h/.cc`）
+开启 jitter buffer 时，新版 SDK 固定每次回调 60ms PCM，即 16kHz mono 16-bit 下的 960 samples / 1920 bytes，不再提供 20/40/60ms 输出帧长配置。
+
+### 2.5 RTM 频道声纹消息
+
+服务端通过已订阅的 RTC 同名 RTM 频道下发声纹注册成功消息：
+
+```json
+{"object":"message.sal_status","status":"VP_REGISTER_SUCCESS"}
+```
+
+`AgoraRtcProtocol` 在 `on_rtm_subscribe_data` 中校验当前频道和 `agent_uid`，解析并严格匹配 `object`、`status`。匹配成功后触发 `Protocol` 提供的“声纹已保存”语义回调；`Application` 不解析 Agora 厂商消息，只在该回调中通过 `Application::Schedule()` 更新显示，避免从 SDK 回调线程直接操作 LVGL。
+
+VP 标志按对话生命周期显示：
+
+| 状态 | LCD 标志 |
+|------|----------|
+| 进入对话 | `VP` 后显示红色叉号 |
+| 收到声纹注册成功消息 | `VP` 后显示绿色勾号 |
+| 离开对话 | 清除 VP 标志 |
+
+界面不显示 `VP REGISTERING` 文字。
+
+### 2.6 Device API 客户端（`device_api_client.h/.cc`）
 
 HTTP 配对联话管理：
 
@@ -161,7 +185,6 @@ Xiaozhi Assistant
             ├─ AI QoS (non-clocked streaming)
             ├─ Cloud AEC (mic-ref interleaving)
             ├─ RTC SDK jitter buffer
-            │   └─ Jitter buffer duration  → 20 / 40 / 60 ms
             └─ Device API Server URL
 ```
 
@@ -172,8 +195,7 @@ Xiaozhi Assistant
 | `CONNECTION_TYPE_AGORA_RTC` | y | 使用 Agora RTC 协议 |
 | `AGORA_AI_QOS` | y | AI QoS，服务端非时钟推流 + CHORUS 场景 |
 | `AGORA_CLOUD_AEC` | y | 云端 AEC，上行交织 mic+ref |
-| `AGORA_JITTER_BUFFER` | y | SDK 内部自适应 jitter buffer |
-| `AGORA_JITTER_BUFFER_DURATION_MS` | 60 | Jitter buffer 输出帧长，设为 60 时 OnAudioData 每次回调 60ms PCM |
+| `AGORA_JITTER_BUFFER` | y | SDK 内部自适应 jitter buffer；开启时 SDK 固定每次输出 60ms PCM |
 
 ### 3.3 配置使用流程
 
@@ -301,9 +323,9 @@ RTC 模式下 listening 和 speaking 都接收下行音频（全双工）。
 
 ### 6.2 FreeRTOS tick 精度（CONFIG_FREERTOS_HZ）
 
-通过 `AGORA_JITTER_BUFFER_DURATION_MS=60` 让 jitter buffer 输出 60ms 帧（匹配下行消费粒度），`OnAudioData` 每次收到 60ms PCM，与下行读取节奏自然同步。
+新版 SDK 的 jitter buffer 固定输出 60ms 帧（匹配下行消费粒度），`OnAudioData` 每次收到 60ms PCM，与下行读取节奏自然同步。
 
-HZ=100（10ms tick）下搭配此设置即可稳定工作，不需要改为 HZ=1000。
+HZ=100（10ms tick）下即可稳定工作，不需要为 jitter buffer 输出帧长改为 HZ=1000。
 
 ### 6.3 Cloud AEC vs Device AEC
 

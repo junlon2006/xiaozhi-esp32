@@ -352,6 +352,78 @@ bool LcdDisplay::Lock(int timeout_ms) { return lvgl_port_lock(timeout_ms); }
 
 void LcdDisplay::Unlock() { lvgl_port_unlock(); }
 
+#if CONFIG_CONNECTION_TYPE_AGORA_RTC
+void LcdDisplay::CreateVoiceprintIndicator(lv_obj_t* parent, const lv_font_t* text_font,
+                                           const lv_font_t* icon_font, int spacing,
+                                           bool reserve_layout_row) {
+    voiceprint_indicator_ = lv_obj_create(parent);
+    lv_obj_set_size(voiceprint_indicator_, reserve_layout_row ? LV_HOR_RES : LV_SIZE_CONTENT,
+                    LV_SIZE_CONTENT);
+    lv_obj_set_style_bg_opa(voiceprint_indicator_, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_border_width(voiceprint_indicator_, 0, 0);
+    lv_obj_set_style_pad_all(voiceprint_indicator_, 0, 0);
+    lv_obj_set_flex_flow(voiceprint_indicator_, LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(voiceprint_indicator_, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER,
+                          LV_FLEX_ALIGN_CENTER);
+    if (!reserve_layout_row) {
+        lv_obj_add_flag(voiceprint_indicator_, LV_OBJ_FLAG_IGNORE_LAYOUT);
+        lv_obj_align(voiceprint_indicator_, LV_ALIGN_TOP_MID, 0,
+                     text_font->line_height * 2 + spacing);
+    }
+
+    voiceprint_label_ = lv_label_create(voiceprint_indicator_);
+    lv_label_set_text(voiceprint_label_, "VP");
+    lv_obj_set_style_text_font(voiceprint_label_, text_font, 0);
+    lv_obj_set_style_text_color(voiceprint_label_,
+                                static_cast<LvglTheme*>(current_theme_)->text_color(), 0);
+
+    voiceprint_status_label_ = lv_label_create(voiceprint_indicator_);
+    lv_obj_set_style_text_font(voiceprint_status_label_, icon_font, 0);
+    lv_obj_set_style_margin_left(voiceprint_status_label_, spacing, 0);
+    UpdateVoiceprintIndicator();
+}
+
+void LcdDisplay::UpdateVoiceprintIndicator() {
+    if (voiceprint_indicator_ == nullptr || voiceprint_status_label_ == nullptr) {
+        return;
+    }
+
+    if (voiceprint_registered_) {
+        lv_label_set_text(voiceprint_status_label_, MATERIAL_SYMBOLS_CHECK);
+        lv_obj_set_style_text_color(voiceprint_status_label_, lv_color_hex(0x4CAF50), 0);
+    } else {
+        lv_label_set_text(voiceprint_status_label_, MATERIAL_SYMBOLS_CLOSE);
+        lv_obj_set_style_text_color(voiceprint_status_label_, lv_color_hex(0xF44336), 0);
+    }
+
+    if (voiceprint_indicator_visible_) {
+        lv_obj_remove_flag(voiceprint_indicator_, LV_OBJ_FLAG_HIDDEN);
+    } else {
+        lv_obj_add_flag(voiceprint_indicator_, LV_OBJ_FLAG_HIDDEN);
+    }
+}
+
+void LcdDisplay::SetVoiceprintIndicatorVisible(bool visible) {
+    voiceprint_indicator_visible_ = visible;
+    if (!setup_ui_called_) {
+        return;
+    }
+
+    DisplayLockGuard lock(this);
+    UpdateVoiceprintIndicator();
+}
+
+void LcdDisplay::SetVoiceprintRegistered(bool registered) {
+    voiceprint_registered_ = registered;
+    if (!setup_ui_called_) {
+        return;
+    }
+
+    DisplayLockGuard lock(this);
+    UpdateVoiceprintIndicator();
+}
+#endif
+
 #if CONFIG_USE_WECHAT_MESSAGE_STYLE
 void LcdDisplay::SetupUI() {
     // Prevent duplicate calls - if already called, return early
@@ -416,6 +488,10 @@ void LcdDisplay::SetupUI() {
     lv_obj_set_flex_flow(right_icons, LV_FLEX_FLOW_ROW);
     lv_obj_set_flex_align(right_icons, LV_FLEX_ALIGN_END, LV_FLEX_ALIGN_CENTER,
                           LV_FLEX_ALIGN_CENTER);
+
+#if CONFIG_CONNECTION_TYPE_AGORA_RTC
+    CreateVoiceprintIndicator(container_, text_font, icon_font, lvgl_theme->spacing(1), true);
+#endif
 
     mute_label_ = lv_label_create(right_icons);
     lv_label_set_text(mute_label_, "");
@@ -904,6 +980,10 @@ void LcdDisplay::SetupUI() {
     lv_obj_set_flex_align(right_icons, LV_FLEX_ALIGN_END, LV_FLEX_ALIGN_CENTER,
                           LV_FLEX_ALIGN_CENTER);
 
+#if CONFIG_CONNECTION_TYPE_AGORA_RTC
+    CreateVoiceprintIndicator(screen, text_font, icon_font, lvgl_theme->spacing(1), false);
+#endif
+
     mute_label_ = lv_label_create(right_icons);
     lv_label_set_text(mute_label_, "");
     lv_obj_set_style_text_font(mute_label_, icon_font, 0);
@@ -1202,11 +1282,20 @@ void LcdDisplay::SetTheme(Theme* theme) {
         lv_obj_set_style_text_font(mute_label_, large_icon_font, 0);
         lv_obj_set_style_text_font(battery_label_, large_icon_font, 0);
         lv_obj_set_style_text_font(network_label_, large_icon_font, 0);
+#if CONFIG_CONNECTION_TYPE_AGORA_RTC
+        lv_obj_set_style_text_font(voiceprint_status_label_, large_icon_font, 0);
+#endif
     } else {
         lv_obj_set_style_text_font(mute_label_, icon_font, 0);
         lv_obj_set_style_text_font(battery_label_, icon_font, 0);
         lv_obj_set_style_text_font(network_label_, icon_font, 0);
+#if CONFIG_CONNECTION_TYPE_AGORA_RTC
+        lv_obj_set_style_text_font(voiceprint_status_label_, icon_font, 0);
+#endif
     }
+#if CONFIG_CONNECTION_TYPE_AGORA_RTC
+    lv_obj_set_style_text_font(voiceprint_label_, text_font, 0);
+#endif
 
     // Set parent text color
     lv_obj_set_style_text_font(screen, text_font, 0);
@@ -1232,6 +1321,9 @@ void LcdDisplay::SetTheme(Theme* theme) {
     lv_obj_set_style_text_color(notification_label_, lvgl_theme->text_color(), 0);
     lv_obj_set_style_text_color(mute_label_, lvgl_theme->text_color(), 0);
     lv_obj_set_style_text_color(battery_label_, lvgl_theme->text_color(), 0);
+#if CONFIG_CONNECTION_TYPE_AGORA_RTC
+    lv_obj_set_style_text_color(voiceprint_label_, lvgl_theme->text_color(), 0);
+#endif
     lv_obj_set_style_text_color(emoji_label_, lvgl_theme->text_color(), 0);
 
     // If we have the chat message style, update all message bubbles

@@ -29,11 +29,26 @@ protected:
     std::unique_ptr<LvglGif> gif_controller_ = nullptr;
     lv_obj_t* emoji_box_ = nullptr;
     lv_obj_t* chat_message_label_ = nullptr;
+#if CONFIG_CONNECTION_TYPE_AGORA_RTC
+    lv_obj_t* voiceprint_indicator_ = nullptr;
+    lv_obj_t* voiceprint_label_ = nullptr;
+    lv_obj_t* voiceprint_status_label_ = nullptr;
+#endif
     esp_timer_handle_t preview_timer_ = nullptr;
     std::unique_ptr<LvglImage> preview_image_cached_ = nullptr;
     bool hide_subtitle_ = false;  // Control whether to hide chat messages/subtitles
+#if CONFIG_CONNECTION_TYPE_AGORA_RTC
+    bool voiceprint_indicator_visible_ = false;
+    bool voiceprint_registered_ = false;
+#endif
 
     void InitializeLcdThemes();
+#if CONFIG_CONNECTION_TYPE_AGORA_RTC
+    void CreateVoiceprintIndicator(lv_obj_t* parent, const lv_font_t* text_font,
+                                   const lv_font_t* icon_font, int spacing,
+                                   bool reserve_layout_row);
+    void UpdateVoiceprintIndicator();
+#endif
     virtual bool Lock(int timeout_ms = 0) override;
     virtual void Unlock() override;
 
@@ -47,6 +62,10 @@ public:
     virtual void SetEmotion(const char* emotion) override;
     virtual void SetChatMessage(const char* role, const char* content) override;
     virtual void ClearChatMessages() override;
+#if CONFIG_CONNECTION_TYPE_AGORA_RTC
+    virtual void SetVoiceprintIndicatorVisible(bool visible) override;
+    virtual void SetVoiceprintRegistered(bool registered) override;
+#endif
     virtual void SetPreviewImage(std::unique_ptr<LvglImage> image) override;
     virtual void SetupUI() override;
     // Add theme switching function
