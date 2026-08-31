@@ -39,6 +39,12 @@ void Display::ClearChatMessages() {
     // Default empty implementation, override in subclasses if needed
 }
 
+#if CONFIG_CONNECTION_TYPE_AGORA_RTC
+void Display::SetVoiceprintIndicatorVisible(bool) {}
+
+void Display::SetVoiceprintRegistered(bool) {}
+#endif
+
 void Display::SetTheme(Theme* theme) {
     current_theme_ = theme;
     Settings settings("display", true);

@@ -48,6 +48,12 @@ void Protocol::OnConnected(std::function<void()> callback) { on_connected_ = cal
 
 void Protocol::OnDisconnected(std::function<void()> callback) { on_disconnected_ = callback; }
 
+#if CONFIG_CONNECTION_TYPE_AGORA_RTC
+void Protocol::OnVoiceprintRegistered(std::function<void()> callback) {
+    on_voiceprint_registered_ = callback;
+}
+#endif
+
 void Protocol::SetError(const std::string& message) {
     error_occurred_ = true;
     if (on_network_error_ != nullptr) {

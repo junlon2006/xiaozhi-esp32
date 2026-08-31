@@ -779,6 +779,13 @@ void Application::InitializeProtocol() {
 
     protocol_->OnAudioChannelOpened([this, codec, &board]() {
         board.SetPowerSaveLevel(PowerSaveLevel::PERFORMANCE);
+#if CONFIG_CONNECTION_TYPE_AGORA_RTC
+        Schedule([]() {
+            auto display = Board::GetInstance().GetDisplay();
+            display->SetVoiceprintRegistered(false);
+            display->SetVoiceprintIndicatorVisible(true);
+        });
+#endif
         if (protocol_->server_sample_rate() != codec->output_sample_rate()) {
             ESP_LOGW(TAG,
                      "Server sample rate %d does not match device output sample rate %d, "
@@ -791,10 +798,19 @@ void Application::InitializeProtocol() {
         board.SetPowerSaveLevel(PowerSaveLevel::LOW_POWER);
         Schedule([this]() {
             auto display = Board::GetInstance().GetDisplay();
+#if CONFIG_CONNECTION_TYPE_AGORA_RTC
+            display->SetVoiceprintIndicatorVisible(false);
+#endif
             display->SetChatMessage("system", "");
             SetDeviceState(kDeviceStateIdle);
         });
     });
+
+#if CONFIG_CONNECTION_TYPE_AGORA_RTC
+    protocol_->OnVoiceprintRegistered([this]() {
+        Schedule([]() { Board::GetInstance().GetDisplay()->SetVoiceprintRegistered(true); });
+    });
+#endif
 
     protocol_->OnIncomingJson([this, display](const cJSON* root) {
         // Parse JSON data

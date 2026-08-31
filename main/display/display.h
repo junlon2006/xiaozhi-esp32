@@ -40,6 +40,10 @@ public:
     virtual void SetEmotion(const char* emotion);
     virtual void SetChatMessage(const char* role, const char* content);
     virtual void ClearChatMessages();
+#if CONFIG_CONNECTION_TYPE_AGORA_RTC
+    virtual void SetVoiceprintIndicatorVisible(bool visible);
+    virtual void SetVoiceprintRegistered(bool registered);
+#endif
     virtual void SetTheme(Theme* theme);
     virtual Theme* GetTheme() { return current_theme_; }
     virtual void UpdateStatusBar(bool update_all = false);

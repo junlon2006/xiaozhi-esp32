@@ -1,23 +1,24 @@
 #ifndef _AGORA_RTC_PROTOCOL_H_
 #define _AGORA_RTC_PROTOCOL_H_
 
-#include "protocol.h"
-#include "device_api_client.h"
 #include "audio/lock_free_ring_buffer.h"
+#include "device_api_client.h"
+#include "protocol.h"
 
-#include <string>
-#include <vector>
+#include <freertos/FreeRTOS.h>
+#include <freertos/event_groups.h>
+#include <freertos/task.h>
+#include <atomic>
 #include <memory>
 #include <mutex>
-#include <atomic>
-#include <freertos/FreeRTOS.h>
-#include <freertos/task.h>
-#include <freertos/event_groups.h>
+#include <string>
+#include <vector>
 
 #include "agora_rtc_api.h"
 
-#define AGORA_JOINED_EVENT    (1 << 0)
+#define AGORA_JOINED_EVENT (1 << 0)
 #define AGORA_RTM_LOGIN_EVENT (1 << 1)
+#define AGORA_RTM_SUBSCRIBE_EVENT (1 << 2)
 
 // Kconfig-based feature flags — defaults defined in Kconfig.projbuild
 #ifndef CONFIG_AGORA_AI_QOS
@@ -29,14 +30,9 @@
 #ifndef CONFIG_AGORA_JITTER_BUFFER
 #define CONFIG_AGORA_JITTER_BUFFER true
 #endif
-#ifndef CONFIG_AGORA_JITTER_BUFFER_DURATION_MS
-#define CONFIG_AGORA_JITTER_BUFFER_DURATION_MS 60
-#endif
-
-#define AGORA_AI_QOS                    CONFIG_AGORA_AI_QOS
-#define AGORA_CLOUD_AEC                 CONFIG_AGORA_CLOUD_AEC
-#define AGORA_JITTER_BUFFER             CONFIG_AGORA_JITTER_BUFFER
-#define AGORA_JITTER_BUFFER_DURATION_MS CONFIG_AGORA_JITTER_BUFFER_DURATION_MS
+#define AGORA_AI_QOS CONFIG_AGORA_AI_QOS
+#define AGORA_CLOUD_AEC CONFIG_AGORA_CLOUD_AEC
+#define AGORA_JITTER_BUFFER CONFIG_AGORA_JITTER_BUFFER
 
 class AgoraRtcProtocol : public Protocol {
 public:
@@ -60,11 +56,19 @@ public:
 
 private:
     EventGroupHandle_t event_group_handle_;
-    connection_id_t conn_id_ = CONNECTION_ID_INVALID;
+    std::atomic<connection_id_t> conn_id_{CONNECTION_ID_INVALID};
     std::atomic<bool> joined_{false};
+    std::atomic<bool> rtm_login_requested_{false};
     std::atomic<bool> rtm_logged_in_{false};
+    std::atomic<bool> rtm_subscribe_requested_{false};
+    std::atomic<bool> rtm_subscribed_{false};
     std::atomic<bool> sdk_initialized_{false};
+    std::atomic<bool> sdk_restart_required_{false};
+    mutable std::mutex rtm_mutex_;
+    std::string local_rtm_uid_;
     std::string remote_rtm_uid_;
+    std::string rtm_channel_;
+    std::string rtm_session_id_;
     uint32_t rtm_msg_id_ = 0;
 
     // Device API and conversation state
@@ -72,29 +76,51 @@ private:
     ConversationInfo current_conversation_;
 
     // Downlink AEC reference ring buffer (lock-free SPSC, PSRAM-allocated)
-    static constexpr size_t kRefBufferMaxSamples = 16000; // 1 second @ 16kHz
+    static constexpr int kPcmSampleRate = 16000;
+    static constexpr int kPcmFrameDurationMs = 60;
+    static constexpr size_t kPcmSamplesPerFrame = kPcmSampleRate * kPcmFrameDurationMs / 1000;
+    static constexpr size_t kPcmBytesPerFrame = kPcmSamplesPerFrame * sizeof(int16_t);
+#if CONFIG_CONNECTION_TYPE_AGORA_RTC
+    static constexpr size_t kMaxVoiceprintMessageBytes = 1024;
+#endif
+    static constexpr size_t kMaxP2pMessageBytes = 31 * 1024;
+    static constexpr size_t kRefBufferMaxSamples = kPcmSampleRate;  // 1 second
     std::unique_ptr<LockFreeRingBuffer> ref_ring_buffer_;
 
     bool SendText(const std::string& text) override;
     bool InitSdk(const std::string& app_id);
     void FiniSdk();
+    void CleanupRtm();
+    void StopCurrentConversation();
+    static bool IsCurrentConnection(connection_id_t conn_id);
 
     // RTC static callbacks
     static void OnJoinChannelSuccess(connection_id_t conn_id, uint32_t uid, int elapsed_ms);
     static void OnError(connection_id_t conn_id, int code, const char* msg);
-    static void OnUserJoinedWithUserAccount(connection_id_t conn_id, const user_info_t* user, int elapsed_ms);
-    static void OnUserOfflineWithUserAccount(connection_id_t conn_id, const user_info_t* user, int reason);
+    static void OnUserJoinedWithUserAccount(connection_id_t conn_id, const user_info_t* user,
+                                            int elapsed_ms);
+    static void OnUserOfflineWithUserAccount(connection_id_t conn_id, const user_info_t* user,
+                                             int reason);
     static void OnAudioData(connection_id_t conn_id, uint32_t uid, uint16_t sent_ts,
-                            const void* data_ptr, size_t data_len, const audio_frame_info_t* info_ptr);
+                            const void* data_ptr, size_t data_len,
+                            const audio_frame_info_t* info_ptr);
     static void OnUserMuteAudio(connection_id_t conn_id, uint32_t uid, bool muted);
     static void OnConnectionLost(connection_id_t conn_id);
     static void OnReconnecting(connection_id_t conn_id);
     static void OnRejoinChannelSuccess(connection_id_t conn_id, uint32_t uid, int elapsed_ms);
 
     // RTM static callbacks
-    static void OnRtmEvent(const char* rtm_uid, rtm_event_type_e event_type, rtm_err_code_e err_code);
-    static void OnRtmData(const char* rtm_uid, const void* msg, size_t msg_len, const char* custom_type);
+    static void OnRtmEvent(const char* rtm_uid, rtm_event_type_e event_type,
+                           rtm_err_code_e err_code);
+    static void OnRtmData(const char* rtm_uid, const void* msg, size_t msg_len,
+                          rtm_message_type_e msg_type, const char* custom_type);
     static void OnRtmSendDataResult(const char* rtm_uid, uint32_t msg_id, rtm_msg_state_e state);
+    static void OnRtmSubscribeResult(const char* channel_name, rtm_err_code_e err_code);
+#if CONFIG_CONNECTION_TYPE_AGORA_RTC
+    static void OnRtmSubscribeData(const char* channel_name, const char* rtm_uid, const void* msg,
+                                   size_t msg_len, rtm_message_type_e msg_type,
+                                   const char* custom_type);
+#endif
 };
 
-#endif // _AGORA_RTC_PROTOCOL_H_
+#endif  // _AGORA_RTC_PROTOCOL_H_
