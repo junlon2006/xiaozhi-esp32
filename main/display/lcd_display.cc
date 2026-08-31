@@ -389,11 +389,11 @@ void LcdDisplay::UpdateVoiceprintIndicator() {
     }
 
     if (voiceprint_registered_) {
-        lv_label_set_text(voiceprint_status_label_, MATERIAL_SYMBOLS_CHECK);
-        lv_obj_set_style_text_color(voiceprint_status_label_, lv_color_hex(0x4CAF50), 0);
+        lv_label_set_text(voiceprint_status_label_, MATERIAL_SYMBOLS_CHECK_CIRCLE);
+        lv_obj_set_style_text_color(voiceprint_status_label_, lv_color_hex(0x00C853), 0);
     } else {
-        lv_label_set_text(voiceprint_status_label_, MATERIAL_SYMBOLS_CLOSE);
-        lv_obj_set_style_text_color(voiceprint_status_label_, lv_color_hex(0xF44336), 0);
+        lv_label_set_text(voiceprint_status_label_, MATERIAL_SYMBOLS_CANCEL);
+        lv_obj_set_style_text_color(voiceprint_status_label_, lv_color_hex(0xFF1744), 0);
     }
 
     if (voiceprint_indicator_visible_) {
