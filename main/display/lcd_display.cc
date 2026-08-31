@@ -378,9 +378,15 @@ void LcdDisplay::CreateVoiceprintIndicator(lv_obj_t* parent, const lv_font_t* te
                                 static_cast<LvglTheme*>(current_theme_)->text_color(), 0);
 
     voiceprint_status_label_ = lv_label_create(voiceprint_indicator_);
-    lv_obj_set_style_text_font(voiceprint_status_label_, icon_font, 0);
-    lv_obj_set_style_margin_left(voiceprint_status_label_, spacing, 0);
+    SetVoiceprintStatusFont(icon_font);
+    lv_obj_set_style_margin_left(voiceprint_status_label_, 1, 0);
     UpdateVoiceprintIndicator();
+}
+
+void LcdDisplay::SetVoiceprintStatusFont(const lv_font_t* icon_font) {
+    lv_obj_set_style_text_font(voiceprint_status_label_, icon_font, 0);
+    auto vertical_offset = std::max<int32_t>(1, icon_font->line_height / 8);
+    lv_obj_set_style_translate_y(voiceprint_status_label_, -vertical_offset, 0);
 }
 
 void LcdDisplay::UpdateVoiceprintIndicator() {
@@ -1283,14 +1289,14 @@ void LcdDisplay::SetTheme(Theme* theme) {
         lv_obj_set_style_text_font(battery_label_, large_icon_font, 0);
         lv_obj_set_style_text_font(network_label_, large_icon_font, 0);
 #if CONFIG_CONNECTION_TYPE_AGORA_RTC
-        lv_obj_set_style_text_font(voiceprint_status_label_, large_icon_font, 0);
+        SetVoiceprintStatusFont(large_icon_font);
 #endif
     } else {
         lv_obj_set_style_text_font(mute_label_, icon_font, 0);
         lv_obj_set_style_text_font(battery_label_, icon_font, 0);
         lv_obj_set_style_text_font(network_label_, icon_font, 0);
 #if CONFIG_CONNECTION_TYPE_AGORA_RTC
-        lv_obj_set_style_text_font(voiceprint_status_label_, icon_font, 0);
+        SetVoiceprintStatusFont(icon_font);
 #endif
     }
 #if CONFIG_CONNECTION_TYPE_AGORA_RTC

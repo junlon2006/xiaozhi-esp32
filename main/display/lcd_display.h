@@ -47,6 +47,7 @@ protected:
     void CreateVoiceprintIndicator(lv_obj_t* parent, const lv_font_t* text_font,
                                    const lv_font_t* icon_font, int spacing,
                                    bool reserve_layout_row);
+    void SetVoiceprintStatusFont(const lv_font_t* icon_font);
     void UpdateVoiceprintIndicator();
 #endif
     virtual bool Lock(int timeout_ms = 0) override;
