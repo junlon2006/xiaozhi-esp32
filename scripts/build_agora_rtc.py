@@ -43,6 +43,23 @@ def clean_build_dir() -> None:
     shutil.rmtree(BUILD_DIR)
     print(f"Cleaned build directory: {BUILD_DIR}")
 
+
+def clean_release_archives() -> None:
+    """Remove release.py archives; this batch only keeps extracted binaries."""
+    if not RELEASES_DIR.exists():
+        return
+
+    removed = 0
+    for archive_path in RELEASES_DIR.glob(f"v{VERSION}_*.zip"):
+        if archive_path.is_file() or archive_path.is_symlink():
+            try:
+                archive_path.unlink()
+                removed += 1
+            except OSError as error:
+                print(f"Warning: failed to remove {archive_path}: {error}")
+    if removed:
+        print(f"Removed {removed} release archive(s)")
+
 # Each variant: (board_dir, variant_name, output_name_stem, region)
 # output_name_stem: BOARD_TYPE 去掉前缀 "BOARD_TYPE_" 后全小写（§9 命名规则）
 VARIANTS = [
@@ -148,6 +165,10 @@ def build_variant(board_dir: str, variant_name: str, output_stem: str, region: s
     # Step 4: Rename
     extracted = RELEASES_DIR / "merged-binary.bin"
     shutil.move(extracted, output_path)
+    try:
+        zip_path.unlink()
+    except OSError as error:
+        print(f"Warning: failed to remove {zip_path}: {error}")
 
     size_mb = output_path.stat().st_size / (1024 * 1024)
     print(f"  [OK] {output_name} ({size_mb:.1f} MB, "
@@ -187,9 +208,12 @@ def main():
     clean_build_dir()
     total_started_at = time.perf_counter()
     results = []
-    for board_dir, variant_name, output_stem, region in variants:
-        ok = build_variant(board_dir, variant_name, output_stem, region)
-        results.append((variant_name, ok))
+    try:
+        for board_dir, variant_name, output_stem, region in variants:
+            ok = build_variant(board_dir, variant_name, output_stem, region)
+            results.append((variant_name, ok))
+    finally:
+        clean_release_archives()
 
     # Summary
     print(f"\n{'=' * 70}")
