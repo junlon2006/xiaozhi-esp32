@@ -15,12 +15,33 @@ import os
 import shutil
 import subprocess
 import sys
+import time
 import zipfile
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
+BUILD_DIR = PROJECT_ROOT / "build"
 RELEASES_DIR = PROJECT_ROOT / "releases"
 VERSION = "2.4.0"
+
+
+def format_elapsed(started_at: float) -> str:
+    """Format elapsed wall-clock time as HH:MM:SS, rounded down to seconds."""
+    total_seconds = max(0, int(time.perf_counter() - started_at))
+    hours, remainder = divmod(total_seconds, 3600)
+    minutes, seconds = divmod(remainder, 60)
+    return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+
+
+def clean_build_dir() -> None:
+    """Remove the project build directory before starting a build batch."""
+    if not BUILD_DIR.exists():
+        print(f"Build directory does not exist: {BUILD_DIR}")
+        return
+    if BUILD_DIR.is_symlink() or not BUILD_DIR.is_dir():
+        raise RuntimeError(f"Refusing to remove non-directory build path: {BUILD_DIR}")
+    shutil.rmtree(BUILD_DIR)
+    print(f"Cleaned build directory: {BUILD_DIR}")
 
 # Each variant: (board_dir, variant_name, output_name_stem, region)
 # output_name_stem: BOARD_TYPE 去掉前缀 "BOARD_TYPE_" 后全小写（§9 命名规则）
@@ -77,11 +98,13 @@ def run_release(board_dir: str, variant_name: str) -> bool:
 
 def build_variant(board_dir: str, variant_name: str, output_stem: str, region: str) -> bool:
     """Build one variant and extract/rename the merged binary."""
+    started_at = time.perf_counter()
     output_name = f"{output_stem}_{region}.bin"
     output_path = RELEASES_DIR / output_name
 
     if output_path.exists():
-        print(f"  [SKIP] {output_name} already exists")
+        print(f"  [SKIP] {output_name} already exists "
+              f"(elapsed: {format_elapsed(started_at)})")
         return True
 
     print(f"\n{'=' * 70}")
@@ -91,7 +114,8 @@ def build_variant(board_dir: str, variant_name: str, output_stem: str, region: s
 
     # Step 1: Build with release.py
     if not run_release(board_dir, variant_name):
-        print(f"  [FAIL] Build failed for {variant_name}")
+        print(f"  [FAIL] Build failed for {variant_name} "
+              f"(elapsed: {format_elapsed(started_at)})")
         return False
 
     # Step 2: Locate the zip file
@@ -105,7 +129,8 @@ def build_variant(board_dir: str, variant_name: str, output_stem: str, region: s
         zip_files = list(RELEASES_DIR.glob(f"v{VERSION}_*{variant_name.split('/')[-1]}.zip"))
 
     if not zip_files:
-        print(f"  [FAIL] No zip file found for {variant_name}")
+        print(f"  [FAIL] No zip file found for {variant_name} "
+              f"(elapsed: {format_elapsed(started_at)})")
         return False
 
     zip_path = zip_files[0]
@@ -114,7 +139,8 @@ def build_variant(board_dir: str, variant_name: str, output_stem: str, region: s
     # Step 3: Extract merged-binary.bin from zip
     with zipfile.ZipFile(zip_path) as zf:
         if "merged-binary.bin" not in zf.namelist():
-            print(f"  [FAIL] merged-binary.bin not found in {zip_path.name}")
+            print(f"  [FAIL] merged-binary.bin not found in {zip_path.name} "
+                  f"(elapsed: {format_elapsed(started_at)})")
             return False
 
         zf.extract("merged-binary.bin", RELEASES_DIR)
@@ -124,7 +150,8 @@ def build_variant(board_dir: str, variant_name: str, output_stem: str, region: s
     shutil.move(extracted, output_path)
 
     size_mb = output_path.stat().st_size / (1024 * 1024)
-    print(f"  [OK] {output_name} ({size_mb:.1f} MB)")
+    print(f"  [OK] {output_name} ({size_mb:.1f} MB, "
+          f"elapsed: {format_elapsed(started_at)})")
     return True
 
 
@@ -157,6 +184,8 @@ def main():
     print(f"Variants to build: {len(variants)}")
     print()
 
+    clean_build_dir()
+    total_started_at = time.perf_counter()
     results = []
     for board_dir, variant_name, output_stem, region in variants:
         ok = build_variant(board_dir, variant_name, output_stem, region)
@@ -170,6 +199,7 @@ def main():
         print(f"  [{'OK' if ok else 'FAIL'}] {name}")
     success = sum(1 for _, ok in results if ok)
     print(f"\n  {success}/{len(results)} succeeded")
+    print(f"  Total elapsed: {format_elapsed(total_started_at)}")
     print(f"  Output: {RELEASES_DIR}/")
 
     for f in sorted(RELEASES_DIR.glob("*.bin")):
